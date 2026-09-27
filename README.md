@@ -1,5 +1,7 @@
 # Muhammad Jawad | Applied AI Developer
 
+🌐 **[Explore My Live Portfolio](https://muhammadjawad-ai.vercel.app/)**
+
 **Turning ideas into intelligent products.**
 
 A personal portfolio showcasing practical AI applications, agentic research systems, Python tools, and workflow automation. Built with a responsive interface, interactive project sections, and motion designed for desktop and mobile.
