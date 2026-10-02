@@ -1,7 +1,7 @@
 // Vercel Serverless Function: /api/chat  (Groq, no n8n needed)
 // Env var required in Vercel: GROQ_API_KEY
 
-const MODEL = 'llama-3.3-70b-versatile';
+const MODEL = 'openai/gpt-oss-20b';
 const ALLOWED_ORIGINS = [
   'https://muhammadjawad-ai.vercel.app',
   'http://localhost:3000'
