@@ -31,4 +31,132 @@
 <a class="contact-card spotlight reveal" href="https://www.linkedin.com/in/muhammad-jawad-ai/" target="_blank" rel="noopener noreferrer"><div class="contact-card-top"><span class="contact-icon" aria-hidden="true">in</span><span>↗</span></div><span class="eyebrow">PROFESSIONAL CONNECTIONS</span><h3>Connect on LinkedIn</h3><p>Explore roles and opportunities to collaborate.</p><span class="contact-address">Muhammad Jawad</span></a>
 <a class="contact-card spotlight reveal" href="https://github.com/jawad-hua" target="_blank" rel="noopener noreferrer"><div class="contact-card-top"><span class="contact-icon" aria-hidden="true">&lt;/&gt;</span><span>↗</span></div><span class="eyebrow">CODE & IMPLEMENTATION</span><h3>Explore my GitHub</h3><p>Review my projects and how they're built.</p><span class="contact-address">github.com/jawad-hua</span></a>
 </div><div class="contact-availability reveal"><span><i></i> Open to freelance projects and remote opportunities</span><a href="https://www.kaggle.com/mjawadjawad" target="_blank" rel="noopener noreferrer">More on Kaggle ↗</a></div></section></main>
-<footer class="wrap"><a class="brand" href="#home">mj<span> / </span></a><span>© <span id="year">2026</span> Muhammad Jawad</span><a href="#home">Back to top ↑</a></footer><script src="navigation.js"></script><script src="app.js"></script></body></html>
+<footer class="wrap"><a class="brand" href="#home">mj<span> / </span></a><span>© <span id="year">2026</span> Muhammad Jawad</span><a href="#home">Back to top ↑</a></footer><script src="navigation.js"></script><script src="app.js"></script>
+
+<!-- ===== Jawad AI Chat Widget (Vercel /api/chat + Groq) ===== -->
+<style>
+  #jc-root{position:fixed;right:20px;bottom:20px;z-index:9999;font-family:inherit}
+  #jc-fab{width:58px;height:58px;border-radius:50%;border:0;background:#c5f277;color:#10120f;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;transition:transform .2s}
+  #jc-fab:hover{transform:scale(1.07)}
+  #jc-win{position:absolute;right:0;bottom:72px;width:380px;height:560px;max-height:calc(100vh - 110px);background:#10120f;border:1px solid #2a2f26;border-radius:16px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,.55)}
+  #jc-win[hidden]{display:none}
+  #jc-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 16px 14px 18px;border-bottom:1px solid #2a2f26;background:#10120f}
+  #jc-head strong{display:block;color:#f2f5ec;font-size:16px;font-weight:600}
+  #jc-head span{display:block;color:#c5f277;font-size:12px;margin-top:3px}
+  #jc-close{width:34px;height:34px;border-radius:50%;border:1px solid #2a2f26;background:rgba(255,255,255,.06);color:#f2f5ec;font-size:22px;line-height:1;cursor:pointer;flex:none;transition:background .2s,color .2s}
+  #jc-close:hover{background:#c5f277;color:#10120f}
+  #jc-msgs{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px;background:#12150f}
+  .jc-m{max-width:85%;padding:10px 14px;border-radius:14px;font-size:14.5px;line-height:1.5;word-wrap:break-word;overflow-wrap:anywhere}
+  .jc-bot{align-self:flex-start;background:#1c2019;color:#f2f5ec;border-bottom-left-radius:4px}
+  .jc-user{align-self:flex-end;background:#c5f277;color:#10120f;border-bottom-right-radius:4px}
+  .jc-m a{color:#c5f277;text-decoration:underline}
+  .jc-user a{color:#10120f}
+  .jc-typing{display:flex;gap:5px;align-items:center;padding:14px}
+  .jc-typing i{width:7px;height:7px;border-radius:50%;background:#8b9183;animation:jcb 1.2s infinite}
+  .jc-typing i:nth-child(2){animation-delay:.15s}.jc-typing i:nth-child(3){animation-delay:.3s}
+  @keyframes jcb{0%,60%,100%{opacity:.3;transform:translateY(0)}30%{opacity:1;transform:translateY(-4px)}}
+  #jc-form{display:flex;align-items:flex-end;gap:8px;padding:12px;border-top:1px solid #2a2f26;background:#10120f}
+  #jc-input{flex:1;resize:none;max-height:110px;padding:11px 14px;border-radius:12px;border:1px solid #2a2f26;background:#171a15;color:#f2f5ec;font:inherit;font-size:14.5px;line-height:1.4;outline:none;caret-color:#c5f277}
+  #jc-input::placeholder{color:#8b9183}
+  #jc-input:focus{border-color:#c5f277}
+  #jc-send{width:42px;height:42px;border-radius:12px;border:0;background:#c5f277;color:#10120f;cursor:pointer;flex:none;display:flex;align-items:center;justify-content:center}
+  #jc-send:disabled{opacity:.5;cursor:not-allowed}
+  @media (max-width:480px){#jc-root{right:12px;bottom:12px}#jc-win{width:calc(100vw - 24px);height:75vh;bottom:70px}}
+</style>
+<script>
+(function () {
+  var API = '/api/chat';
+  var WELCOME = [
+    "Hello, and welcome! I'm Jawad's AI assistant.",
+    'I can help with his projects, services and availability, or answer general questions. How can I help you today?'
+  ];
+  var history = [];
+  try { history = JSON.parse(sessionStorage.getItem('jc-history') || '[]'); } catch (e) { history = []; }
+  var busy = false;
+
+  var root = document.createElement('div');
+  root.id = 'jc-root';
+  root.innerHTML =
+    '<button id="jc-fab" type="button" aria-label="Open chat"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></button>' +
+    '<section id="jc-win" role="dialog" aria-label="Jawad AI Assistant" hidden>' +
+      '<div id="jc-head"><div><strong>Jawad AI Assistant</strong><span>Projects · Services · Collaboration</span></div>' +
+      '<button id="jc-close" type="button" aria-label="Close chat">&times;</button></div>' +
+      '<div id="jc-msgs" aria-live="polite"></div>' +
+      '<form id="jc-form"><textarea id="jc-input" rows="1" maxlength="500" placeholder="Type your message..." aria-label="Your message"></textarea>' +
+      '<button id="jc-send" type="submit" aria-label="Send"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4z"/></svg></button></form>' +
+    '</section>';
+  document.body.appendChild(root);
+
+  var fab = document.getElementById('jc-fab');
+  var win = document.getElementById('jc-win');
+  var msgs = document.getElementById('jc-msgs');
+  var form = document.getElementById('jc-form');
+  var input = document.getElementById('jc-input');
+  var send = document.getElementById('jc-send');
+
+  function esc(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+  function fmt(text) {
+    var h = esc(text);
+    h = h.replace(/(https?:\/\/[^\s<]+?)([.,;:!?)]*)(\s|$)/g, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>$2$3');
+    h = h.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    return h.replace(/\n/g, '<br>');
+  }
+  function add(role, text) {
+    var d = document.createElement('div');
+    d.className = 'jc-m ' + (role === 'user' ? 'jc-user' : 'jc-bot');
+    d.innerHTML = fmt(text);
+    msgs.appendChild(d);
+    msgs.scrollTop = msgs.scrollHeight;
+    return d;
+  }
+  function save() { try { sessionStorage.setItem('jc-history', JSON.stringify(history.slice(-20))); } catch (e) {} }
+  function render() {
+    msgs.innerHTML = '';
+    WELCOME.forEach(function (t) { add('bot', t); });
+    history.forEach(function (m) { add(m.role === 'user' ? 'user' : 'bot', m.content); });
+  }
+  function open() { win.hidden = false; input.focus(); msgs.scrollTop = msgs.scrollHeight; }
+  function close() { win.hidden = true; }
+
+  fab.addEventListener('click', function () { win.hidden ? open() : close(); });
+  document.getElementById('jc-close').addEventListener('click', close);
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !win.hidden) close(); });
+  input.addEventListener('input', function () { input.style.height = 'auto'; input.style.height = Math.min(input.scrollHeight, 110) + 'px'; });
+  input.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); form.requestSubmit(); }
+  });
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var text = input.value.trim();
+    if (!text || busy) return;
+    busy = true; send.disabled = true;
+    input.value = ''; input.style.height = 'auto';
+    history.push({ role: 'user', content: text });
+    add('user', text);
+    var typing = document.createElement('div');
+    typing.className = 'jc-m jc-bot jc-typing';
+    typing.innerHTML = '<i></i><i></i><i></i>';
+    msgs.appendChild(typing); msgs.scrollTop = msgs.scrollHeight;
+
+    fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages: history.slice(-10) }) })
+      .then(function (r) { if (!r.ok) throw new Error('bad'); return r.json(); })
+      .then(function (d) {
+        typing.remove();
+        var reply = d.reply || 'Sorry, I could not generate a reply. Please contact Jawad on WhatsApp: +92 329 8636377';
+        history.push({ role: 'assistant', content: reply });
+        add('bot', reply); save();
+      })
+      .catch(function () {
+        typing.remove();
+        history.pop();
+        add('bot', 'Something went wrong. Please try again, or contact Jawad directly on WhatsApp: https://wa.me/923298636377');
+      })
+      .then(function () { busy = false; send.disabled = false; input.focus(); });
+  });
+
+  render();
+})();
+</script>
+<!-- ===== End Chat Widget ===== -->
+</body></html>
