@@ -51,6 +51,16 @@
   .jc-user{align-self:flex-end;background:#c5f277;color:#10120f;border-bottom-right-radius:4px}
   .jc-m a{color:#c5f277;text-decoration:underline}
   .jc-user a{color:#10120f}
+  .jc-m p{margin:0 0 8px}
+  .jc-m p:last-child,.jc-m ul:last-child,.jc-m ol:last-child,.jc-m .jc-card:last-child{margin-bottom:0}
+  .jc-m ul,.jc-m ol{margin:0 0 8px;padding-left:20px}.jc-m li{margin:3px 0}
+  .jc-m code{background:rgba(255,255,255,.08);padding:1px 5px;border-radius:5px;font-size:13px}
+  .jc-user code{background:rgba(0,0,0,.12)}
+  .jc-card{border:1px solid #2a2f26;border-radius:10px;padding:9px 11px;margin:0 0 8px;background:#161a14}
+  .jc-card strong{display:block;margin-bottom:3px}
+  .jc-card div{font-size:13.5px;color:#d5dacb;margin-top:2px}
+  .jc-card div b{color:#8b9183;font-weight:500}
+  .jc-bot{max-width:92%}
   .jc-typing{display:flex;gap:5px;align-items:center;padding:14px}
   .jc-typing i{width:7px;height:7px;border-radius:50%;background:#8b9183;animation:jcb 1.2s infinite}
   .jc-typing i:nth-child(2){animation-delay:.15s}.jc-typing i:nth-child(3){animation-delay:.3s}
@@ -95,11 +105,58 @@
   var send = document.getElementById('jc-send');
 
   function esc(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+  var A = ' target="_blank" rel="noopener noreferrer"';
+  function inline(s) {
+    s = s.replace(/`([^`]+)`/g, '<code>$1</code>');
+    s = s.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2"' + A + '>$1</a>');
+    s = s.replace(/&lt;(https?:\/\/[^\s&]+)&gt;/g, '<a href="$1"' + A + '>$1</a>');
+    s = s.replace(/(^|[\s(])(https?:\/\/[^\s<]+?)([.,;:!?)]*)(?=\s|$|<)/g, function (m, pre, url, tail) {
+      return pre + '<a href="' + url + '"' + A + '>' + url + '</a>' + tail;
+    });
+    s = s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    return s;
+  }
+  function cells(row) { return row.replace(/^\||\|$/g, '').split('|').map(function (c) { return c.trim(); }); }
+  function tableToCards(rows) {
+    var head = cells(rows[0]), html = '';
+    for (var r = 2; r < rows.length; r++) {
+      var c = cells(rows[r]);
+      html += '<div class="jc-card"><strong>' + inline((c[0] || '').replace(/\*\*/g, '')) + '</strong>';
+      for (var k = 1; k < c.length; k++) {
+        if (c[k]) html += '<div><b>' + inline(head[k] || '') + ':</b> ' + inline(c[k]) + '</div>';
+      }
+      html += '</div>';
+    }
+    return html;
+  }
   function fmt(text) {
-    var h = esc(text);
-    h = h.replace(/(https?:\/\/[^\s<]+?)([.,;:!?)]*)(\s|$)/g, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>$2$3');
-    h = h.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-    return h.replace(/\n/g, '<br>');
+    var lines = esc(text).split('\n'), out = [], list = null, i = 0, m;
+    function closeList() { if (list) { out.push('</' + list + '>'); list = null; } }
+    while (i < lines.length) {
+      var t = lines[i].trim();
+      if (!t || /^[-*_]{3,}$/.test(t)) { closeList(); i++; continue; }
+      if (/^\|.*\|$/.test(t) && i + 1 < lines.length && /^\|?[\s:|-]*-[\s:|-]*\|?$/.test(lines[i + 1].trim())) {
+        closeList();
+        var rows = [];
+        while (i < lines.length && /^\|.*\|$/.test(lines[i].trim())) { rows.push(lines[i].trim()); i++; }
+        out.push(tableToCards(rows));
+        continue;
+      }
+      if ((m = t.match(/^[-*\u2022]\s+(.*)$/))) {
+        if (list !== 'ul') { closeList(); out.push('<ul>'); list = 'ul'; }
+        out.push('<li>' + inline(m[1]) + '</li>'); i++; continue;
+      }
+      if ((m = t.match(/^\d+[.)]\s+(.*)$/))) {
+        if (list !== 'ol') { closeList(); out.push('<ol>'); list = 'ol'; }
+        out.push('<li>' + inline(m[1]) + '</li>'); i++; continue;
+      }
+      closeList();
+      if ((m = t.match(/^#{1,6}\s+(.*)$/))) out.push('<p><strong>' + inline(m[1]) + '</strong></p>');
+      else out.push('<p>' + inline(t) + '</p>');
+      i++;
+    }
+    closeList();
+    return out.join('');
   }
   function add(role, text) {
     var d = document.createElement('div');
