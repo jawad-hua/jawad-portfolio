@@ -1,7 +1,9 @@
 // Vercel Serverless Function: /api/chat  (Groq, no n8n needed)
 // Env var required in Vercel: GROQ_API_KEY
 
-const MODEL = 'openai/gpt-oss-20b';
+const { geo, geoText, notify } = require('./_notify.js');
+
+const MODEL = 'llama-3.3-70b-versatile';
 const ALLOWED_ORIGINS = [
   'https://muhammadjawad-ai.vercel.app',
   'http://localhost:3000'
@@ -63,6 +65,7 @@ Typical help: build an AI assistant around your workflow, create a research or R
 - General questions (AI, coding, tech, career, study, anything else): answer fully and accurately yourself. Do not mention Jawad's contact details.
 
 - "CV / resume / profile": give the CV link right away, and mention there is also a "Download CV" button on the portfolio. Do not mention WhatsApp.
+- Recruiter, hiring manager or job / freelance offer: respond warmly and professionally; say Jawad is open to remote roles, freelance projects and collaboration; share the CV link and his LinkedIn; invite them to leave their details; end with the form token (see CONTACT FORM TOKEN below).
 - "Can Jawad build X?" / any project idea: work out which service and which of his projects it is closest to, say honestly whether it fits his skills, name the closest project as proof, and ask one question about the goal. Only if it is clearly outside his listed skills (for example native mobile apps, hardware), say it is outside his listed focus and suggest asking him directly.
 
 # THINK BEFORE ANSWERING (do this for every message)
@@ -73,6 +76,9 @@ Typical help: build an AI assistant around your workflow, create a research or R
 
 # WHEN TO SHARE CONTACT (WhatsApp number and link)
 Only when: (a) the visitor asks for a number, phone, WhatsApp or how to contact; (b) the visitor wants to hire Jawad or start a project; (c) the visitor asks about price, cost, timeline or a quote; (d) the question is about a private or unlisted detail of Jawad's life or work (for example years of experience, past client names, salary, address). In case (d) say briefly that you do not have that detail and suggest asking Jawad directly.
+
+# CONTACT FORM TOKEN
+When the visitor wants to hire Jawad, start a project, asks about price, timeline or a quote, or is a recruiter or employer, put the exact text [[CONTACT_FORM]] alone on the very last line of your reply. The website turns it into a small contact form. Never use it for any other kind of message. Never explain or mention the token.
 
 # LIMITS
 - Never invent prices, deadlines, client names, experience years or personal details. For price or timeline say it depends on the project scope and is discussed directly with Jawad.
@@ -148,6 +154,10 @@ module.exports = async (req, res) => {
     return res.status(400).json({ error: 'Invalid request' });
   }
 
+  const notifyP = messages.length === 1
+    ? notify('New chat on portfolio', 'Location: ' + geoText(geo(req)) + '\nFirst message: ' + messages[0].content.slice(0, 500)).catch(() => false)
+    : null;
+
   try {
     const site = await getSiteText();
     const withSite = site
@@ -180,7 +190,12 @@ module.exports = async (req, res) => {
       if (r.ok) {
         const data = await r.json();
         const reply = (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || '';
-        if (reply.trim()) return res.status(200).json({ reply: reply.trim() });
+        if (reply.trim()) {
+          const form = /\[\[CONTACT_FORM\]\]/.test(reply);
+          const clean = reply.replace(/\[\[CONTACT_FORM\]\]/g, '').trim();
+          if (notifyP) await notifyP;
+          return res.status(200).json({ reply: clean, form: form });
+        }
         lastError = 'empty reply';
         continue;
       }
@@ -189,9 +204,11 @@ module.exports = async (req, res) => {
       console.error('Groq error:', lastError);
       if (r.status === 401) break; // invalid key: retrying will not help
     }
+    if (notifyP) await notifyP;
     return res.status(502).json({ error: 'AI service error', detail: lastError });
   } catch (e) {
     console.error('Server error:', e);
+    try { if (notifyP) await notifyP; } catch (_) {}
     return res.status(500).json({ error: 'Server error', detail: String(e && e.message || e) });
   }
 };
