@@ -3,7 +3,7 @@
 
 const { geo, geoText, notify } = require('./_notify.js');
 
-const MODEL = 'llama-3.3-70b-versatile';
+const MODEL = 'openai/gpt-oss-20b';
 const ALLOWED_ORIGINS = [
   'https://muhammadjawad-ai.vercel.app',
   'http://localhost:3000'
